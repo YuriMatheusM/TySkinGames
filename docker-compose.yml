@@ -1,0 +1,67 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - tyskingames_network
+    restart: always
+  backend:
+    build: ./backend
+    container_name: backend
+    depends_on:
+      - mysql
+    env_file:
+      - ./backend/.env
+    restart: always
+    command:
+      [
+        "./wait-for-it.sh",
+        "mysql:3306",
+        "--timeout=30",
+        "--strict",
+        "--",
+        "python",
+        "app.py",
+      ]
+    expose:
+      - "5000"
+    networks:
+      - tyskingames_network
+
+    volumes:
+      - ./backend/static/uploads:/app/static/uploads
+      - ./backend/static/perfil:/app/static/perfil
+
+  frontend:
+    build: ./front
+    container_name: frontend
+    restart: always
+    networks:
+      - tyskingames_network
+
+  nginx:
+    build: ./front
+    container_name: nginx
+    ports:
+      - "80:80"
+    depends_on:
+      - frontend
+    volumes:
+      - ./front/nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - tyskingames_network
+    restart: always
+
+networks:
+  tyskingames_network:
+    driver: bridge
+
+volumes:
+  mysql_data:
